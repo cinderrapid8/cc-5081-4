@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>近战格挡裁决 · 演示</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23f0c14f'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #10131a;
+    --panel: #171c25;
+    --line: #2a3242;
+    --text: #dbe3ef;
+    --muted: #8592a6;
+    --block: #4f9cf0;
+    --parry: #f0c14f;
+    --hit: #ef5b5b;
+    --guard: #63d08a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 16px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; margin: 0; letter-spacing: .04em; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  main {
+    display: grid; grid-template-columns: minmax(0, 1fr) 380px;
+    gap: 12px; padding: 12px; align-items: start;
+  }
+  body { min-height: 100vh; }
+  main { max-height: none; }
+  aside.column {
+    display: flex; flex-direction: column; gap: 12px;
+    max-height: calc(100vh - 90px); overflow-y: auto; padding-right: 4px;
+  }
+  aside.column::-webkit-scrollbar { width: 8px; }
+  aside.column::-webkit-scrollbar-thumb { background: #2a3242; border-radius: 4px; }
+  .stage { position: relative; }
+  canvas {
+    width: 100%; aspect-ratio: 16 / 10; background: #0b0e14;
+    border: 1px solid var(--line); border-radius: 8px; display: block;
+  }
+  .overlay {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 10px;
+  }
+  .badge {
+    align-self: flex-start; padding: 4px 10px; border-radius: 999px;
+    background: rgba(23,28,37,.85); border: 1px solid var(--line);
+    font-size: 12px; letter-spacing: .04em;
+  }
+  .result-pop {
+    align-self: center; font-size: 26px; font-weight: 700; letter-spacing: .12em;
+    opacity: 0; transition: opacity .14s ease; text-transform: uppercase;
+  }
+  .result-pop.show { opacity: 1; }
+  .result-pop.block { color: var(--block); }
+  .result-pop.parry { color: var(--parry); }
+  .result-pop.hit { color: var(--hit); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .panel + .panel { margin-top: 12px; }
+  .panel h2 { font-size: 12px; margin: 0 0 8px; color: var(--muted); letter-spacing: .1em; font-weight: 600; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  button {
+    background: #222a38; color: var(--text); border: 1px solid #33405a;
+    border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit;
+  }
+  button:hover { background: #2b3547; }
+  button:active { transform: translateY(1px); }
+  button.hot { border-color: var(--guard); }
+  .kbd { color: var(--muted); font-size: 11px; }
+
+  .gauges { display: flex; gap: 10px; }
+  .gauge { flex: 1; }
+  .gauge label { color: var(--muted); font-size: 11px; display: block; margin-bottom: 2px; }
+  .bar { height: 8px; background: #0d1118; border-radius: 4px; overflow: hidden; border: 1px solid #232b39; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--guard); transition: width .1s linear; }
+
+  .timeline-wrap { position: relative; }
+  .timeline {
+    width: 100%; height: 148px; background: #0b0e14;
+    border: 1px solid var(--line); border-radius: 8px; display: block;
+  }
+  .log { max-height: 210px; overflow: auto; font-size: 12px; }
+  .log div { padding: 2px 0; border-bottom: 1px dashed #1e2531; color: var(--muted); }
+  .log div.settled.block { color: var(--block); }
+  .log div.settled.parry { color: var(--parry); }
+  .log div.settled.hit { color: var(--hit); }
+
+  .scenario-list { display: flex; flex-direction: column; gap: 6px; }
+  .scenario-list button { text-align: left; }
+  .scenario-list button.active { border-color: var(--parry); background: #2a2618; }
+
+  .verdict { font-size: 12px; color: var(--muted); min-height: 34px; }
+  .verdict b { color: var(--text); }
+  .chip {
+    display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 11px;
+    border: 1px solid var(--line); margin-right: 4px;
+  }
+  .chip.block { color: var(--block); border-color: #2b5d91; }
+  .chip.parry { color: var(--parry); border-color: #7a6524; }
+  .chip.hit { color: var(--hit); border-color: #7c2f2f; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>近战格挡裁决</h1>
+  <span class="sub">输入已确认接触事件 · 输出格挡 / 招架 / 受击 · 画面标注被采用的判定时刻</span>
+</header>
+
+<main>
+  <section class="stage">
+    <canvas id="stage" width="960" height="600"></canvas>
+    <div class="overlay">
+      <span class="badge" id="hud">等待开始</span>
+      <span class="result-pop" id="pop"></span>
+    </div>
+  </section>
+
+  <aside class="column">
+    <div class="panel">
+      <h2>场景</h2>
+      <div class="scenario-list" id="scenarios"></div>
+      <p class="verdict" id="blurb"></p>
+      <div class="row">
+        <button id="play" class="hot">播放 / 重放</button>
+        <button id="step">单步 +10ms</button>
+        <button id="pause">暂停</button>
+      </div>
+      <div class="row">
+        <label class="kbd">渲染步长</label>
+        <button id="fps-30">30fps</button>
+        <button id="fps-144">144fps</button>
+        <button id="fps-1">1fps</button>
+        <span class="kbd" id="fps-label">60fps</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>角色操作</h2>
+      <div class="row">
+        <button id="act-guard" class="hot">抬盾 / 松盾 <span class="kbd">J</span></button>
+        <button id="act-turn">转身 180° <span class="kbd">K</span></button>
+      </div>
+      <div class="row">
+        <button id="act-gear">切换装备 <span class="kbd">L</span></button>
+        <span class="kbd" id="gear-label">剑 + 盾</span>
+      </div>
+      <div class="row">
+        <label class="kbd">朝向</label>
+        <button data-face="0">正前</button>
+        <button data-face="90">右侧</button>
+        <button data-face="180">背后</button>
+      </div>
+      <div class="gauges">
+        <div class="gauge"><label>生命</label><div class="bar"><i id="hpbar" style="background:var(--hit)"></i></div></div>
+        <div class="gauge"><label>防御覆盖</label><div class="bar"><i id="guardbar"></i></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>时间线 · 被采用判定时刻</h2>
+      <div class="timeline-wrap"><canvas class="timeline" id="timeline" width="700" height="260"></canvas></div>
+      <div class="verdict" id="verdict">—</div>
+    </div>
+
+    <div class="panel">
+      <h2>事件记录</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="./demo.js"></script>
+</body>
+</html>

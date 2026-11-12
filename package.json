@@ -1,0 +1,11 @@
+{
+  "name": "melee-guard-adjudicator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Melee block / parry / hit adjudication from confirmed contact events",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "serve": "node scripts/serve.js"
+  }
+}
