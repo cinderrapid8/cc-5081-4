@@ -1,11 +1,12 @@
 {
-  "name": "melee-guard-adjudicator",
+  "name": "melee-block-adjudicator",
   "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "description": "Melee block / parry / hit adjudication from confirmed contact events",
+  "description": "近战格挡/招架裁决模块：输入已确认接触的攻击事件，输出格挡、招架或受击",
+  "main": "src/adjudicator.js",
   "scripts": {
-    "test": "node --test \"test/**/*.test.js\"",
-    "serve": "node scripts/serve.js"
-  }
+    "test": "node --test test/*.test.js",
+    "samples": "node samples/contact-events.js",
+    "frame-experiment": "node samples/frame-rate-experiment.js"
+  },
+  "license": "MIT"
 }
